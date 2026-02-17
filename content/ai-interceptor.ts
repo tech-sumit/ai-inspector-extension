@@ -7,15 +7,47 @@
 
 export {};
 
-interface AiInspectorEmitter {
-  emit(type: string, data: Record<string, unknown>): void;
+/* ── Shared helpers ──────────────────────────────────────────── */
+
+function emit(type: string, data: Record<string, unknown>) {
+  window.postMessage({ source: "ai-inspector", type, data }, "*");
 }
 
-const __aiInspector: AiInspectorEmitter = {
-  emit(type: string, data: Record<string, unknown>) {
-    window.postMessage({ source: "ai-inspector", type, data }, "*");
-  },
-};
+/** Wrap a tool's execute callback to emit TOOL_CALL / TOOL_RESULT_AI events. */
+function wrapToolExecute(
+  toolDef: Record<string, unknown>,
+  sessionId?: string,
+): Record<string, unknown> {
+  if (typeof toolDef.execute !== "function") return toolDef;
+  const origExecute = toolDef.execute as (args: unknown) => unknown;
+  const wrapped = { ...toolDef };
+  wrapped.execute = async function (args: unknown) {
+    const base = sessionId ? { sessionId, tool: toolDef.name } : { tool: toolDef.name };
+    emit("TOOL_CALL", { ...base, args, ts: Date.now() });
+    try {
+      const result = await origExecute(args);
+      emit("TOOL_RESULT_AI", { ...base, result, ts: Date.now() });
+      return result;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      emit("TOOL_RESULT_AI", { ...base, error: message, ts: Date.now() });
+      throw err;
+    }
+  };
+  return wrapped;
+}
+
+/** Extract the serialisable subset of a tool definition for TOOL_REGISTERED events. */
+function toolMeta(toolDef: Record<string, unknown>) {
+  return {
+    name: toolDef.name,
+    description: toolDef.description,
+    inputSchema: toolDef.inputSchema,
+    annotations: toolDef.annotations,
+  };
+}
+
+/* ── LanguageModel (window.ai) interception ──────────────────── */
 
 (function interceptLanguageModel() {
   // @ts-expect-error LanguageModel is an experimental Chrome API
@@ -31,14 +63,14 @@ const __aiInspector: AiInspectorEmitter = {
     if (typeof session.prompt === "function") {
       const originalPrompt = session.prompt.bind(session);
       session.prompt = async function (input: unknown, opts?: unknown) {
-        __aiInspector.emit("PROMPT_SENT", { sessionId, input, opts, ts: Date.now() });
+        emit("PROMPT_SENT", { sessionId, input, opts, ts: Date.now() });
         try {
           const result = await originalPrompt(input, opts);
-          __aiInspector.emit("PROMPT_RESPONSE", { sessionId, result, ts: Date.now() });
+          emit("PROMPT_RESPONSE", { sessionId, result, ts: Date.now() });
           return result;
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
-          __aiInspector.emit("PROMPT_ERROR", { sessionId, error: message, ts: Date.now() });
+          emit("PROMPT_ERROR", { sessionId, error: message, ts: Date.now() });
           throw err;
         }
       };
@@ -48,7 +80,7 @@ const __aiInspector: AiInspectorEmitter = {
     if (typeof session.promptStreaming === "function") {
       const originalStream = session.promptStreaming.bind(session);
       session.promptStreaming = function (input: unknown, opts?: unknown) {
-        __aiInspector.emit("STREAM_START", { sessionId, input, opts, ts: Date.now() });
+        emit("STREAM_START", { sessionId, input, opts, ts: Date.now() });
         const stream = originalStream(input, opts);
         return new ReadableStream({
           async start(controller: ReadableStreamDefaultController) {
@@ -61,7 +93,7 @@ const __aiInspector: AiInspectorEmitter = {
                 fullText += value;
                 controller.enqueue(value);
               }
-              __aiInspector.emit("STREAM_END", { sessionId, result: fullText, ts: Date.now() });
+              emit("STREAM_END", { sessionId, result: fullText, ts: Date.now() });
               controller.close();
             } catch (err) {
               controller.error(err);
@@ -71,32 +103,21 @@ const __aiInspector: AiInspectorEmitter = {
       };
     }
 
-    // Wrap tool execute callbacks if tool-use is configured
-    const tools = options?.tools;
-    if (Array.isArray(tools)) {
-      for (const tool of tools) {
-        if (typeof tool.execute === "function") {
-          const origExecute = tool.execute.bind(tool);
-          tool.execute = async function (args: unknown) {
-            __aiInspector.emit("TOOL_CALL", {
-              sessionId, tool: tool.name, args, ts: Date.now(),
-            });
-            const result = await origExecute(args);
-            __aiInspector.emit("TOOL_RESULT_AI", {
-              sessionId, tool: tool.name, result, ts: Date.now(),
-            });
-            return result;
-          };
-        }
+    // Wrap tool execute callbacks (reuses shared helper with sessionId)
+    if (Array.isArray(options?.tools)) {
+      for (const tool of options.tools as Record<string, unknown>[]) {
+        Object.assign(tool, wrapToolExecute(tool, sessionId));
       }
     }
 
-    __aiInspector.emit("SESSION_CREATED", {
+    emit("SESSION_CREATED", {
       sessionId,
       options: {
         temperature: options?.temperature,
         topK: options?.topK,
-        tools: Array.isArray(tools) ? tools.map((t: Record<string, unknown>) => t.name) : undefined,
+        tools: Array.isArray(options?.tools)
+          ? (options.tools as Record<string, unknown>[]).map((t) => t.name)
+          : undefined,
       },
       quotaUsage: {
         inputUsed: session.inputUsed,
@@ -109,122 +130,56 @@ const __aiInspector: AiInspectorEmitter = {
   };
 })();
 
+/* ── navigator.modelContext (WebMCP) interception ────────────── */
+
 (function interceptModelContext() {
   const mc = navigator.modelContext;
   if (!mc) return;
 
-  // Wrap a tool definition's execute callback so we emit TOOL_CALL / TOOL_RESULT_AI events.
-  function wrapToolExecute(toolDef: Record<string, unknown>): Record<string, unknown> {
-    if (typeof toolDef.execute !== "function") return toolDef;
-    const origExecute = toolDef.execute as (args: unknown) => unknown;
-    const wrappedDef = { ...toolDef };
-    wrappedDef.execute = async function (args: unknown) {
-      __aiInspector.emit("TOOL_CALL", {
-        tool: toolDef.name, args, ts: Date.now(),
-      });
-      try {
-        const result = await origExecute(args);
-        __aiInspector.emit("TOOL_RESULT_AI", {
-          tool: toolDef.name, result, ts: Date.now(),
-        });
-        return result;
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
-        __aiInspector.emit("TOOL_RESULT_AI", {
-          tool: toolDef.name, error: message, ts: Date.now(),
-        });
-        throw err;
-      }
-    };
-    return wrappedDef;
-  }
-
-  // Intercept registerTool() — used by useWebMCPTool hook for individual tool registration.
-  // Events are emitted AFTER calling the original so that if it throws
-  // (e.g. duplicate name, invalid schema) we don't record a false positive.
-  // The execute callback is wrapped BEFORE calling the original so the browser
-  // stores the instrumented version.
   const origRegister = mc.registerTool.bind(mc);
   mc.registerTool = function (toolDef: Record<string, unknown>) {
-    const wrappedDef = wrapToolExecute(toolDef);
-    const result = origRegister(wrappedDef);
-    __aiInspector.emit("TOOL_REGISTERED", {
-      tool: {
-        name: toolDef.name,
-        description: toolDef.description,
-        inputSchema: toolDef.inputSchema,
-        annotations: toolDef.annotations,
-      },
-      ts: Date.now(),
-    });
+    const result = origRegister(wrapToolExecute(toolDef));
+    emit("TOOL_REGISTERED", { tool: toolMeta(toolDef), ts: Date.now() });
     return result;
   };
 
-  // Intercept unregisterTool() — called on component unmount by useWebMCPTool.
-  // Per WebIDL: throws InvalidStateError if tool not found.
   if (typeof mc.unregisterTool === "function") {
     const origUnregister = mc.unregisterTool.bind(mc);
     mc.unregisterTool = function (name: string) {
       const result = origUnregister(name);
-      __aiInspector.emit("TOOL_UNREGISTERED", { name, ts: Date.now() });
+      emit("TOOL_UNREGISTERED", { name, ts: Date.now() });
       return result;
     };
   }
 
-  // Intercept provideContext() — used by useWebMCPContext hook for bulk tool registration.
-  // Per WebIDL: provideContext(ProvideContextParams { tools: sequence<ToolRegistrationParams> })
-  // This replaces all currently registered tools with the provided set.
-  // The spec makes this atomic: on error it rolls back to the previous state.
-  // We emit events AFTER the call succeeds to avoid recording a replacement
-  // that was actually rolled back.
   if (typeof mc.provideContext === "function") {
     const origProvideContext = mc.provideContext.bind(mc);
     mc.provideContext = function (params: { tools: Array<Record<string, unknown>> }) {
-      // Wrap execute callbacks before passing to the browser so it stores
-      // the instrumented versions.
       const wrappedParams = {
         ...params,
-        tools: Array.isArray(params?.tools)
-          ? params.tools.map(wrapToolExecute)
-          : params?.tools,
+        tools: Array.isArray(params?.tools) ? params.tools.map((t) => wrapToolExecute(t)) : params?.tools,
       };
       const result = origProvideContext(wrappedParams);
-
-      // provideContext replaces the entire tool set, so emit CONTEXT_CLEARED first
-      // so deriveToolsFromEvents correctly starts fresh for this batch.
-      __aiInspector.emit("CONTEXT_CLEARED", { ts: Date.now() });
-
+      emit("CONTEXT_CLEARED", { ts: Date.now() });
       if (Array.isArray(params?.tools)) {
         for (const toolDef of params.tools) {
-          __aiInspector.emit("TOOL_REGISTERED", {
-            tool: {
-              name: toolDef.name,
-              description: toolDef.description,
-              inputSchema: toolDef.inputSchema,
-              annotations: toolDef.annotations,
-            },
-            ts: Date.now(),
-          });
+          emit("TOOL_REGISTERED", { tool: toolMeta(toolDef), ts: Date.now() });
         }
       }
       return result;
     };
   }
 
-  // Intercept clearContext() — used by useWebMCPContext on component unmount.
-  // Per WebIDL: clearContext() removes all registered tools.
   if (typeof mc.clearContext === "function") {
     const origClearContext = mc.clearContext.bind(mc);
     mc.clearContext = function () {
       const result = origClearContext();
-      __aiInspector.emit("CONTEXT_CLEARED", { ts: Date.now() });
+      emit("CONTEXT_CLEARED", { ts: Date.now() });
       return result;
     };
   }
 })();
 
-// Declare navigator.modelContext for TypeScript
-// Per WebIDL: partial interface Navigator { readonly attribute ModelContext modelContext; }
 declare global {
   interface Navigator {
     modelContext?: {

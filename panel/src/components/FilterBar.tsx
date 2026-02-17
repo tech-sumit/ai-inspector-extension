@@ -51,7 +51,7 @@ export function FilterBar({ active, onChange, eventCount, onClear, connected }: 
           );
         })}
       </div>
-      <span style={{ color: "#999", fontSize: 10, marginRight: 6 }}>{eventCount} events</span>
+      <span style={{ color: "#999", fontSize: 10, marginRight: 6 }}>{eventCount} requests</span>
       <button
         onClick={onClear}
         style={{ padding: "2px 8px", border: "1px solid #ddd", borderRadius: 3, background: "#fff", color: "#666", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}
