@@ -1,4 +1,5 @@
-import { createContext, useContext, useReducer, useEffect, type ReactNode, type Dispatch } from "react";
+import { createContext, useContext, useReducer, useEffect, useCallback, type ReactNode, type Dispatch } from "react";
+import { flushSync } from "react-dom";
 import { useBackgroundPort } from "../hooks/useBackgroundPort.js";
 
 interface InspectorEvent {
@@ -35,7 +36,7 @@ function reducer(state: InspectorState, action: Action): InspectorState {
     case "UPDATE_TOOLS":
       return { ...state, tools: action.tools };
     case "CLEAR_EVENTS":
-      return { ...state, events: [] };
+      return { ...state, events: [], tools: [] };
     case "PAGE_RELOAD":
       return { ...state, events: [...state.events, { type: "PAGE_RELOAD", ts: Date.now() }], tools: [] };
     case "SET_CONNECTED":
@@ -69,11 +70,11 @@ export function InspectorProvider({ children }: { children: ReactNode }) {
       ? (chrome.devtools.inspectedWindow as unknown as { tabId: number }).tabId
       : undefined;
 
-  const sendMessage = (msg: Record<string, unknown>) => {
+  const sendMessage = useCallback((msg: Record<string, unknown>) => {
     if (!port) return;
     const tabId = getTabId();
     port.postMessage({ tabId, ...msg });
-  };
+  }, [port]);
 
   useEffect(() => {
     if (!port) return;
@@ -81,24 +82,29 @@ export function InspectorProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "SET_CONNECTED", connected: true });
 
     const handler = (msg: Record<string, unknown>) => {
-      if (msg.type === "STATE") {
-        dispatch({
-          type: "SET_STATE",
-          events: (msg.events ?? []) as InspectorEvent[],
-          tools: (msg.tools ?? []) as DiscoveredTool[],
-        });
-      } else if (msg.type === "EVENT") {
-        dispatch({ type: "ADD_EVENT", event: msg.event as InspectorEvent });
-      } else if (msg.type === "TOOLS_UPDATE") {
-        dispatch({ type: "UPDATE_TOOLS", tools: msg.tools as DiscoveredTool[] });
-      } else if (msg.type === "PAGE_RELOAD") {
-        dispatch({ type: "PAGE_RELOAD" });
-      }
+      // flushSync forces React to commit updates synchronously so the
+      // panel refreshes immediately when events arrive from the background
+      // service worker.  Without this, Chrome DevTools panel rendering may
+      // defer batched React updates until the next user interaction.
+      flushSync(() => {
+        if (msg.type === "STATE") {
+          dispatch({
+            type: "SET_STATE",
+            events: (msg.events ?? []) as InspectorEvent[],
+            tools: (msg.tools ?? []) as DiscoveredTool[],
+          });
+        } else if (msg.type === "EVENT") {
+          dispatch({ type: "ADD_EVENT", event: msg.event as InspectorEvent });
+        } else if (msg.type === "TOOLS_UPDATE") {
+          dispatch({ type: "UPDATE_TOOLS", tools: msg.tools as DiscoveredTool[] });
+        } else if (msg.type === "PAGE_RELOAD") {
+          dispatch({ type: "PAGE_RELOAD" });
+        }
+      });
     };
 
     port.onMessage.addListener(handler);
 
-    // Request initial state
     const tabId = getTabId();
     if (tabId) {
       port.postMessage({ type: "GET_STATE", tabId });

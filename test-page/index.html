@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Inspector — Test Page</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #242837;
+      --border: #2e3348;
+      --text: #e4e6f0;
+      --text-muted: #8b8fa8;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --green: #22c55e;
+      --orange: #f59e0b;
+      --red: #ef4444;
+      --cyan: #06b6d4;
+      --pink: #ec4899;
+      --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header .badge {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 99px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 800px) {
+      .container { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .card-header .icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .card-header .icon.ai { background: rgba(99, 102, 241, 0.15); color: var(--accent); }
+    .card-header .icon.mcp { background: rgba(6, 182, 212, 0.15); color: var(--cyan); }
+    .card-header .icon.log { background: rgba(245, 158, 11, 0.15); color: var(--orange); }
+    .card-header .icon.status { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+
+    .card-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .card-header p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .card-body { padding: 1.25rem; }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 0.825rem;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    button:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    button:active { transform: scale(0.97); }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    button.primary:hover { background: var(--accent-hover); }
+
+    button.danger { border-color: var(--red); color: var(--red); }
+    button.danger:hover { background: var(--red); color: #fff; }
+
+    button.success { border-color: var(--green); color: var(--green); }
+    button.success:hover { background: var(--green); color: #fff; }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .section-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .section-label:first-child { margin-top: 0; }
+
+    textarea {
+      width: 100%;
+      min-height: 60px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      resize: vertical;
+      margin-bottom: 0.5rem;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+
+    #log-container {
+      grid-column: 1 / -1;
+    }
+
+    #log {
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 1rem 1.25rem;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      line-height: 1.7;
+    }
+
+    .log-entry {
+      padding: 0.25rem 0;
+      border-bottom: 1px solid rgba(46, 51, 72, 0.5);
+      display: flex;
+      gap: 0.75rem;
+      align-items: baseline;
+    }
+
+    .log-entry:last-child { border-bottom: none; }
+
+    .log-time {
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      flex-shrink: 0;
+      width: 70px;
+    }
+
+    .log-tag {
+      font-size: 0.68rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-weight: 600;
+      flex-shrink: 0;
+      min-width: 50px;
+      text-align: center;
+    }
+
+    .log-tag.ai { background: rgba(99, 102, 241, 0.2); color: var(--accent); }
+    .log-tag.mcp { background: rgba(6, 182, 212, 0.2); color: var(--cyan); }
+    .log-tag.evt { background: rgba(236, 72, 153, 0.2); color: var(--pink); }
+
+    .log-msg { color: var(--text); }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .status-item {
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+    }
+
+    .status-item .label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .status-item .value {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-top: 0.25rem;
+    }
+
+    .status-item .value.on { color: var(--green); }
+    .status-item .value.off { color: var(--red); }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1rem 0;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>AI Inspector — Test Playground</h1>
+  <span class="badge">window.ai + WebMCP</span>
+</header>
+
+<div class="container">
+
+  <!-- Status Card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon status">&#9679;</div>
+      <div>
+        <h2>API Status</h2>
+        <p>Mock API availability</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="status-grid">
+        <div class="status-item">
+          <div class="label">LanguageModel (window.ai)</div>
+          <div class="value" id="status-ai">Checking...</div>
+        </div>
+        <div class="status-item">
+          <div class="label">ModelContext (WebMCP)</div>
+          <div class="value" id="status-mc">Checking...</div>
+        </div>
+        <div class="status-item">
+          <div class="label">Active Sessions</div>
+          <div class="value" id="status-sessions">0</div>
+        </div>
+        <div class="status-item">
+          <div class="label">Registered Tools</div>
+          <div class="value" id="status-tools">0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- window.ai Card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon ai">&#9733;</div>
+      <div>
+        <h2>window.ai — LanguageModel</h2>
+        <p>Create sessions, send prompts, stream responses</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="section-label">Session Management</div>
+      <div class="btn-group">
+        <button onclick="createSession()">Create Session</button>
+        <button onclick="createSessionWithTools()" class="primary">Create with Tools</button>
+      </div>
+
+      <div class="section-label">Prompt</div>
+      <textarea id="prompt-input" placeholder="Enter a prompt to send...">What is the capital of France?</textarea>
+      <div class="btn-group">
+        <button onclick="sendPrompt()" id="btn-prompt" disabled>Send Prompt</button>
+        <button onclick="sendPromptStreaming()" id="btn-stream" disabled>Stream Response</button>
+        <button onclick="sendPromptError()" id="btn-error" disabled>Trigger Error</button>
+      </div>
+
+      <div class="section-label">Tool Use (via AI session)</div>
+      <div class="btn-group">
+        <button onclick="triggerToolCall()" id="btn-toolcall" disabled>Trigger Tool Call</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- navigator.modelContext Card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon mcp">&#9881;</div>
+      <div>
+        <h2>navigator.modelContext — WebMCP</h2>
+        <p>Register tools, provide context, execute</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="section-label">Individual Tool Registration</div>
+      <div class="btn-group">
+        <button onclick="registerCalculator()">Register: calculator</button>
+        <button onclick="registerWeather()">Register: get_weather</button>
+        <button onclick="registerSearch()">Register: web_search</button>
+      </div>
+
+      <div class="section-label">Bulk Operations</div>
+      <div class="btn-group">
+        <button onclick="provideContextAll()" class="primary">provideContext (all 3)</button>
+        <button onclick="clearContext()" class="danger">clearContext</button>
+      </div>
+
+      <div class="section-label">Unregister</div>
+      <div class="btn-group">
+        <button onclick="unregisterTool('calculator')" class="danger">Unregister: calculator</button>
+        <button onclick="unregisterTool('get_weather')" class="danger">Unregister: get_weather</button>
+        <button onclick="unregisterTool('web_search')" class="danger">Unregister: web_search</button>
+      </div>
+
+      <div class="section-label">Tool Execution (via modelContextTesting)</div>
+      <textarea id="tool-args" placeholder='{"expression": "2+2"}'>{"expression": "2 + 2"}</textarea>
+      <div class="btn-group">
+        <button onclick="executeTool('calculator')">Execute: calculator</button>
+        <button onclick="executeTool('get_weather')">Execute: get_weather</button>
+        <button onclick="listTools()" class="success">List Tools</button>
+      </div>
+
+      <div class="section-label">Window Events</div>
+      <div class="btn-group">
+        <button onclick="fireToolActivated()">Fire: toolactivated</button>
+        <button onclick="fireToolCancel()">Fire: toolcancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scenarios Card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon ai">&#9654;</div>
+      <div>
+        <h2>End-to-End Scenarios</h2>
+        <p>Run full workflows to generate rich event streams</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="section-label">Automated Scenarios</div>
+      <div class="btn-group">
+        <button onclick="scenarioChatWithTools()" class="primary">Chat + Tool Use</button>
+        <button onclick="scenarioStreamConversation()">Streaming Conversation</button>
+        <button onclick="scenarioMcpLifecycle()" class="success">WebMCP Full Lifecycle</button>
+        <button onclick="scenarioEverything()" class="primary">Run Everything</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event Log -->
+  <div class="card" id="log-container">
+    <div class="card-header">
+      <div class="icon log">&#9776;</div>
+      <div>
+        <h2>Event Log</h2>
+        <p>Local log of mock API calls</p>
+      </div>
+      <div style="margin-left: auto">
+        <button onclick="clearLog()" class="danger" style="font-size: 0.75rem; padding: 0.3rem 0.75rem;">Clear</button>
+      </div>
+    </div>
+    <div id="log">
+      <div class="empty-state">Events will appear here as you interact with the APIs above.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Logging ───────────────────────────────────────────────────
+const logEl = document.getElementById('log');
+let logEmpty = true;
+
+function log(tag, msg, data) {
+  if (logEmpty) { logEl.innerHTML = ''; logEmpty = false; }
+  const now = new Date();
+  const time = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  const dataStr = data !== undefined ? ' — ' + JSON.stringify(data) : '';
+  entry.innerHTML = `
+    <span class="log-time">${time}</span>
+    <span class="log-tag ${tag}">${tag.toUpperCase()}</span>
+    <span class="log-msg">${msg}${dataStr}</span>
+  `;
+  logEl.appendChild(entry);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function clearLog() {
+  logEl.innerHTML = '<div class="empty-state">Events will appear here as you interact with the APIs above.</div>';
+  logEmpty = true;
+}
+
+// ── Mock LanguageModel (window.ai) ───────────────────────────
+// The extension intercepts LanguageModel.create(), session.prompt(),
+// session.promptStreaming(), and tool execute callbacks.
+
+const MOCK_RESPONSES = [
+  "The capital of France is Paris.",
+  "I'd be happy to help with that!",
+  "That's an interesting question. Let me think about it...",
+  "Based on my knowledge, the answer involves several factors.",
+  "Here's what I found: the result is 42.",
+];
+
+let sessionCount = 0;
+
+function createMockSession(options = {}) {
+  const sessionId = `mock-session-${++sessionCount}`;
+  const tools = options.tools || [];
+
+  const session = {
+    sessionId,
+    inputUsed: 0,
+    inputQuota: 4096,
+
+    async prompt(input, opts) {
+      session.inputUsed += (typeof input === 'string' ? input.length : 50);
+      // Simulate processing delay
+      await delay(300 + Math.random() * 700);
+
+      // If tools are configured and the prompt mentions a tool keyword, simulate a tool call
+      if (tools.length > 0 && typeof input === 'string') {
+        for (const tool of tools) {
+          if (input.toLowerCase().includes(tool.name.replace('_', ' ')) ||
+              input.toLowerCase().includes(tool.name)) {
+            // The extension wraps tool.execute, so calling it triggers interception
+            if (typeof tool.execute === 'function') {
+              const mockArgs = tool._mockArgs || {};
+              await tool.execute(mockArgs);
+            }
+          }
+        }
+      }
+
+      return MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
+    },
+
+    promptStreaming(input, opts) {
+      session.inputUsed += (typeof input === 'string' ? input.length : 50);
+      const response = MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
+      const words = response.split(' ');
+      let index = 0;
+
+      return new ReadableStream({
+        async pull(controller) {
+          if (index < words.length) {
+            await delay(100 + Math.random() * 200);
+            const chunk = (index === 0 ? '' : ' ') + words[index];
+            controller.enqueue(chunk);
+            index++;
+          } else {
+            controller.close();
+          }
+        }
+      });
+    },
+
+    destroy() {
+      log('ai', `Session ${sessionId} destroyed`);
+    }
+  };
+
+  return session;
+}
+
+// Install mock LanguageModel on globalThis so the extension can intercept it
+globalThis._usingRealLM = !!globalThis.LanguageModel;
+if (!globalThis.LanguageModel) {
+  globalThis.LanguageModel = {
+    async create(options = {}) {
+      log('ai', 'LanguageModel.create() called', { temperature: options.temperature, topK: options.topK });
+      const session = createMockSession(options);
+      return session;
+    },
+
+    async availability() {
+      return 'available';
+    }
+  };
+  log('ai', 'Mock LanguageModel installed on globalThis');
+}
+
+// ── navigator.modelContext (WebMCP) ──────────────────────────
+// Works with BOTH the real browser API (Chrome Canary) and a mock fallback.
+// The extension intercepts registerTool, unregisterTool, provideContext, clearContext.
+
+const registeredTools = new Map(); // local tracking (for UI status + mock fallback)
+let toolsChangedCallbacks = [];
+const usingRealModelContext = !!navigator.modelContext;
+
+if (!navigator.modelContext) {
+  Object.defineProperty(navigator, 'modelContext', {
+    value: {
+      registerTool(toolDef) {
+        if (registeredTools.has(toolDef.name)) {
+          throw new DOMException(`Tool "${toolDef.name}" already registered`, 'InvalidStateError');
+        }
+        registeredTools.set(toolDef.name, toolDef);
+        log('mcp', `registerTool("${toolDef.name}")`, { description: toolDef.description });
+        notifyToolsChanged();
+      },
+
+      unregisterTool(name) {
+        if (!registeredTools.has(name)) {
+          throw new DOMException(`Tool "${name}" not found`, 'InvalidStateError');
+        }
+        registeredTools.delete(name);
+        log('mcp', `unregisterTool("${name}")`);
+        notifyToolsChanged();
+      },
+
+      provideContext(params) {
+        registeredTools.clear();
+        if (Array.isArray(params?.tools)) {
+          for (const tool of params.tools) {
+            registeredTools.set(tool.name, tool);
+          }
+        }
+        log('mcp', `provideContext() — ${registeredTools.size} tools set`);
+        notifyToolsChanged();
+      },
+
+      clearContext() {
+        registeredTools.clear();
+        log('mcp', 'clearContext() — all tools removed');
+        notifyToolsChanged();
+      }
+    },
+    writable: false,
+    configurable: true
+  });
+  log('mcp', 'Mock navigator.modelContext installed');
+} else {
+  log('mcp', 'Using real navigator.modelContext (browser-native)');
+}
+
+// Mock navigator.modelContextTesting if browser doesn't provide it
+if (!navigator.modelContextTesting) {
+  Object.defineProperty(navigator, 'modelContextTesting', {
+    value: {
+      listTools() {
+        const tools = Array.from(registeredTools.values()).map(t => ({
+          name: t.name,
+          description: t.description || '',
+          inputSchema: typeof t.inputSchema === 'string' ? t.inputSchema : JSON.stringify(t.inputSchema || {}),
+        }));
+        log('mcp', `listTools() → ${tools.length} tools`);
+        return tools;
+      },
+
+      async executeTool(name, argsJson) {
+        const tool = registeredTools.get(name);
+        if (!tool) throw new DOMException(`Tool "${name}" not found`, 'InvalidStateError');
+        const args = typeof argsJson === 'string' ? JSON.parse(argsJson) : argsJson;
+        log('mcp', `executeTool("${name}")`, args);
+        if (typeof tool.execute === 'function') {
+          const result = await tool.execute(args);
+          return typeof result === 'string' ? result : JSON.stringify(result);
+        }
+        return JSON.stringify({ ok: true, tool: name });
+      },
+
+      registerToolsChangedCallback(cb) {
+        toolsChangedCallbacks.push(cb);
+        log('mcp', 'Registered tools-changed callback');
+      }
+    },
+    writable: false,
+    configurable: true
+  });
+  log('mcp', 'Mock navigator.modelContextTesting installed');
+} else {
+  log('mcp', 'Using real navigator.modelContextTesting (browser-native)');
+}
+
+function notifyToolsChanged() {
+  for (const cb of toolsChangedCallbacks) {
+    try { cb(); } catch (e) { console.error('toolsChanged callback error:', e); }
+  }
+}
+
+// Safe registration: unregisters first if already registered (avoids DOMException).
+// Works with both real browser API and mock.
+function safeRegisterTool(toolDef) {
+  try { navigator.modelContext.unregisterTool(toolDef.name); } catch (_) { /* not registered, fine */ }
+  navigator.modelContext.registerTool(toolDef);
+  registeredTools.set(toolDef.name, toolDef); // keep local tracking in sync for real API
+}
+
+function safeClearContext() {
+  try { navigator.modelContext.clearContext(); } catch (_) { /* ignore */ }
+  registeredTools.clear();
+}
+
+// ── Tool Definitions ─────────────────────────────────────────
+
+const TOOL_DEFS = {
+  calculator: {
+    name: 'calculator',
+    description: 'Evaluate a mathematical expression and return the result.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        expression: { type: 'string', description: 'The math expression to evaluate (e.g. "2 + 2")' }
+      },
+      required: ['expression']
+    },
+    annotations: { audience: ['user', 'assistant'], idempotent: true },
+    execute(args) {
+      try {
+        const result = Function('"use strict"; return (' + args.expression + ')')();
+        log('mcp', `calculator("${args.expression}") → ${result}`);
+        return { result: String(result) };
+      } catch (e) {
+        return { error: e.message };
+      }
+    },
+    _mockArgs: { expression: '6 * 7' }
+  },
+
+  get_weather: {
+    name: 'get_weather',
+    description: 'Get the current weather for a given city.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        city: { type: 'string', description: 'City name (e.g. "San Francisco")' },
+        units: { type: 'string', enum: ['celsius', 'fahrenheit'], description: 'Temperature units' }
+      },
+      required: ['city']
+    },
+    annotations: { audience: ['user'], idempotent: true },
+    execute(args) {
+      const temp = Math.round(15 + Math.random() * 20);
+      const conditions = ['sunny', 'cloudy', 'partly cloudy', 'rainy', 'windy'];
+      const condition = conditions[Math.floor(Math.random() * conditions.length)];
+      const result = { city: args.city || 'Unknown', temperature: temp, condition, units: args.units || 'celsius' };
+      log('mcp', `get_weather("${args.city}") → ${temp}° ${condition}`);
+      return result;
+    },
+    _mockArgs: { city: 'San Francisco', units: 'celsius' }
+  },
+
+  web_search: {
+    name: 'web_search',
+    description: 'Search the web for information on a given query.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'The search query' },
+        max_results: { type: 'number', description: 'Maximum number of results', default: 5 }
+      },
+      required: ['query']
+    },
+    annotations: { audience: ['assistant'], readOnlyHint: true },
+    execute(args) {
+      const results = [
+        { title: `Result 1 for "${args.query}"`, url: 'https://example.com/1', snippet: 'This is a mock search result...' },
+        { title: `Result 2 for "${args.query}"`, url: 'https://example.com/2', snippet: 'Another relevant finding...' },
+      ];
+      log('mcp', `web_search("${args.query}") → ${results.length} results`);
+      return { results };
+    },
+    _mockArgs: { query: 'WebMCP specification', max_results: 3 }
+  }
+};
+
+// ── Utility ──────────────────────────────────────────────────
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── UI State ─────────────────────────────────────────────────
+let currentSession = null;
+
+function updateStatus() {
+  const aiEl = document.getElementById('status-ai');
+  const mcEl = document.getElementById('status-mc');
+  const sessEl = document.getElementById('status-sessions');
+  const toolsEl = document.getElementById('status-tools');
+
+  const hasAi = !!globalThis.LanguageModel;
+  const hasMc = !!navigator.modelContext;
+
+  aiEl.textContent = hasAi ? (globalThis._usingRealLM ? 'Native' : 'Mock') : 'Unavailable';
+  aiEl.className = 'value ' + (hasAi ? 'on' : 'off');
+
+  mcEl.textContent = hasMc ? (usingRealModelContext ? 'Native' : 'Mock') : 'Unavailable';
+  mcEl.className = 'value ' + (hasMc ? 'on' : 'off');
+
+  sessEl.textContent = currentSession ? '1' : '0';
+  toolsEl.textContent = String(registeredTools.size);
+
+  document.getElementById('btn-prompt').disabled = !currentSession;
+  document.getElementById('btn-stream').disabled = !currentSession;
+  document.getElementById('btn-error').disabled = !currentSession;
+  document.getElementById('btn-toolcall').disabled = !currentSession || !(currentSession._tools?.length);
+}
+
+// ── window.ai Actions ────────────────────────────────────────
+
+async function createSession() {
+  log('ai', 'Creating basic session...');
+  try {
+    currentSession = await LanguageModel.create({
+      temperature: 0.7,
+      topK: 40,
+    });
+    currentSession._tools = [];
+    log('ai', 'Session created (no tools)');
+    updateStatus();
+  } catch (e) {
+    log('ai', 'Error: ' + e.message);
+  }
+}
+
+async function createSessionWithTools() {
+  log('ai', 'Creating session with tools...');
+  try {
+    const tools = [
+      { ...TOOL_DEFS.calculator },
+      { ...TOOL_DEFS.get_weather },
+    ];
+    currentSession = await LanguageModel.create({
+      temperature: 0.8,
+      topK: 50,
+      tools,
+    });
+    currentSession._tools = tools;
+    log('ai', 'Session created with 2 tools (calculator, get_weather)');
+    updateStatus();
+  } catch (e) {
+    log('ai', 'Error: ' + e.message);
+  }
+}
+
+async function sendPrompt() {
+  if (!currentSession) return;
+  const input = document.getElementById('prompt-input').value;
+  log('ai', `Sending prompt: "${input.substring(0, 60)}..."`);
+  try {
+    const result = await currentSession.prompt(input);
+    log('ai', `Response: "${result}"`);
+  } catch (e) {
+    log('ai', 'Prompt error: ' + e.message);
+  }
+}
+
+async function sendPromptStreaming() {
+  if (!currentSession) return;
+  const input = document.getElementById('prompt-input').value;
+  log('ai', `Streaming prompt: "${input.substring(0, 60)}..."`);
+  try {
+    const stream = currentSession.promptStreaming(input);
+    const reader = stream.getReader();
+    let full = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      full += value;
+    }
+    log('ai', `Stream complete: "${full}"`);
+  } catch (e) {
+    log('ai', 'Stream error: ' + e.message);
+  }
+}
+
+async function sendPromptError() {
+  if (!currentSession) return;
+  log('ai', 'Triggering prompt error...');
+  // Temporarily break the session to force an error
+  const origPrompt = currentSession.prompt;
+  currentSession.prompt = async function () {
+    throw new Error('Simulated AI model overloaded error');
+  };
+  try {
+    await currentSession.prompt('This will fail');
+  } catch (e) {
+    log('ai', 'Error caught: ' + e.message);
+  }
+  currentSession.prompt = origPrompt;
+}
+
+async function triggerToolCall() {
+  if (!currentSession || !currentSession._tools?.length) return;
+  const tool = currentSession._tools[0];
+  log('ai', `Manually calling tool "${tool.name}"...`);
+  try {
+    const result = await tool.execute(tool._mockArgs || {});
+    log('ai', `Tool result:`, result);
+  } catch (e) {
+    log('ai', 'Tool error: ' + e.message);
+  }
+}
+
+// ── navigator.modelContext Actions ───────────────────────────
+
+function registerCalculator() {
+  try { safeRegisterTool({ ...TOOL_DEFS.calculator }); }
+  catch (e) { log('mcp', 'Error: ' + e.message); }
+  updateStatus();
+}
+
+function registerWeather() {
+  try { safeRegisterTool({ ...TOOL_DEFS.get_weather }); }
+  catch (e) { log('mcp', 'Error: ' + e.message); }
+  updateStatus();
+}
+
+function registerSearch() {
+  try { safeRegisterTool({ ...TOOL_DEFS.web_search }); }
+  catch (e) { log('mcp', 'Error: ' + e.message); }
+  updateStatus();
+}
+
+function unregisterTool(name) {
+  try {
+    navigator.modelContext.unregisterTool(name);
+    registeredTools.delete(name);
+  } catch (e) { log('mcp', 'Error: ' + e.message); }
+  updateStatus();
+}
+
+function provideContextAll() {
+  try {
+    navigator.modelContext.provideContext({
+      tools: [
+        { ...TOOL_DEFS.calculator },
+        { ...TOOL_DEFS.get_weather },
+        { ...TOOL_DEFS.web_search },
+      ]
+    });
+    // Sync local tracking for real API
+    registeredTools.clear();
+    registeredTools.set('calculator', TOOL_DEFS.calculator);
+    registeredTools.set('get_weather', TOOL_DEFS.get_weather);
+    registeredTools.set('web_search', TOOL_DEFS.web_search);
+  } catch (e) { log('mcp', 'Error: ' + e.message); }
+  updateStatus();
+}
+
+function clearContext() {
+  safeClearContext();
+  updateStatus();
+}
+
+async function executeTool(name) {
+  const argsInput = document.getElementById('tool-args').value;
+  try {
+    const result = await navigator.modelContextTesting.executeTool(name, argsInput);
+    log('mcp', `executeTool result:`, JSON.parse(result || '{}'));
+  } catch (e) {
+    log('mcp', 'Execute error: ' + e.message);
+  }
+}
+
+function listTools() {
+  try {
+    const tools = navigator.modelContextTesting.listTools();
+    log('mcp', 'Tools list:', tools.map(t => t.name));
+  } catch (e) {
+    log('mcp', 'Error: ' + e.message);
+  }
+}
+
+// ── Window Events ────────────────────────────────────────────
+
+function fireToolActivated() {
+  const evt = new CustomEvent('toolactivated', {
+    detail: { tool: 'calculator', args: { expression: '1+1' }, requestId: crypto.randomUUID() }
+  });
+  window.dispatchEvent(evt);
+  log('evt', 'Dispatched toolactivated event');
+}
+
+function fireToolCancel() {
+  const evt = new CustomEvent('toolcancel', {
+    detail: { tool: 'calculator', requestId: crypto.randomUUID() }
+  });
+  window.dispatchEvent(evt);
+  log('evt', 'Dispatched toolcancel event');
+}
+
+// ── End-to-End Scenarios ─────────────────────────────────────
+
+async function scenarioChatWithTools() {
+  log('ai', '── Scenario: Chat + Tool Use ──');
+
+  // 1. Create session with tools
+  const tools = [{ ...TOOL_DEFS.calculator }, { ...TOOL_DEFS.get_weather }];
+  const session = await LanguageModel.create({ temperature: 0.7, tools });
+  log('ai', 'Session created with calculator + get_weather');
+
+  // 2. Send a prompt
+  await delay(500);
+  const r1 = await session.prompt('What is 6 times 7?');
+  log('ai', `Response: "${r1}"`);
+
+  // 3. Trigger a tool call via prompt
+  await delay(500);
+  const r2 = await session.prompt('What is the weather in Tokyo?');
+  log('ai', `Response: "${r2}"`);
+
+  // 4. Direct tool call
+  await delay(300);
+  await tools[0].execute({ expression: '42 * 42' });
+
+  log('ai', '── Scenario complete ──');
+}
+
+async function scenarioStreamConversation() {
+  log('ai', '── Scenario: Streaming Conversation ──');
+
+  const session = await LanguageModel.create({ temperature: 0.9, topK: 30 });
+
+  const prompts = [
+    'Tell me a joke about programming.',
+    'Now explain quantum computing in one sentence.',
+    'What is the meaning of life?',
+  ];
+
+  for (const prompt of prompts) {
+    log('ai', `Streaming: "${prompt}"`);
+    const stream = session.promptStreaming(prompt);
+    const reader = stream.getReader();
+    let text = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      text += value;
+    }
+    log('ai', `Complete: "${text}"`);
+    await delay(300);
+  }
+
+  log('ai', '── Scenario complete ──');
+}
+
+async function scenarioMcpLifecycle() {
+  log('mcp', '── Scenario: WebMCP Full Lifecycle ──');
+
+  // 0. Clear any leftover state from previous runs
+  safeClearContext();
+  await delay(200);
+
+  // 1. Register tools individually (safe — handles duplicates)
+  safeRegisterTool({ ...TOOL_DEFS.calculator });
+  await delay(300);
+  safeRegisterTool({ ...TOOL_DEFS.get_weather });
+  await delay(300);
+
+  // 2. List tools
+  try { navigator.modelContextTesting.listTools(); } catch (_) {}
+  await delay(300);
+
+  // 3. Execute a tool
+  try {
+    await navigator.modelContextTesting.executeTool('calculator', '{"expression": "100 / 4"}');
+  } catch (e) { log('mcp', 'Execute error: ' + e.message); }
+  await delay(300);
+
+  // 4. Unregister one
+  try {
+    navigator.modelContext.unregisterTool('calculator');
+    registeredTools.delete('calculator');
+  } catch (e) { log('mcp', 'Unregister error: ' + e.message); }
+  await delay(300);
+
+  // 5. Use provideContext to replace everything
+  try {
+    navigator.modelContext.provideContext({
+      tools: [
+        { ...TOOL_DEFS.calculator },
+        { ...TOOL_DEFS.web_search },
+      ]
+    });
+    registeredTools.clear();
+    registeredTools.set('calculator', TOOL_DEFS.calculator);
+    registeredTools.set('web_search', TOOL_DEFS.web_search);
+  } catch (e) { log('mcp', 'provideContext error: ' + e.message); }
+  await delay(300);
+
+  // 6. Execute via testing API
+  try {
+    await navigator.modelContextTesting.executeTool('web_search', '{"query": "WebMCP spec"}');
+  } catch (e) { log('mcp', 'Execute error: ' + e.message); }
+  await delay(300);
+
+  // 7. Fire window events
+  fireToolActivated();
+  await delay(200);
+  fireToolCancel();
+  await delay(200);
+
+  // 8. Clear context
+  safeClearContext();
+  await delay(200);
+
+  log('mcp', '── Scenario complete ──');
+  updateStatus();
+}
+
+async function scenarioEverything() {
+  log('ai', '══ Running all scenarios ══');
+  await scenarioChatWithTools();
+  await delay(500);
+  await scenarioStreamConversation();
+  await delay(500);
+  await scenarioMcpLifecycle();
+  log('ai', '══ All scenarios complete ══');
+}
+
+// ── Listen for ai-inspector events (for debugging) ───────────
+window.addEventListener('message', (e) => {
+  if (e.data?.source === 'ai-inspector') {
+    console.log('[AI Inspector Event]', e.data.type, e.data.data);
+  }
+});
+
+// ── Init ─────────────────────────────────────────────────────
+updateStatus();
+</script>
+
+</body>
+</html>

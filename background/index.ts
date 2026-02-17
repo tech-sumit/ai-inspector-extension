@@ -89,8 +89,8 @@ chrome.runtime.onConnect.addListener((port) => {
           action: "EXECUTE_TOOL",
           name: msg.name,
           inputArgs: msg.inputArguments,
-        }).catch(() => {
-          // Tab may be closed or content script not loaded
+        }).catch((err: unknown) => {
+          console.warn("[AI Inspector BG] EXECUTE_TOOL failed for tab", tabId, ":", err);
         });
       }
     }
@@ -129,8 +129,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
         world: "MAIN",
         files: ["content/ai-interceptor.js"],
       })
-      .catch(() => {
-        // Ignore errors on chrome:// or restricted pages
+      .catch((err: unknown) => {
+        console.warn("[AI Inspector BG] Failed to inject interceptor on tab", tabId, ":", err);
       });
   }
 });

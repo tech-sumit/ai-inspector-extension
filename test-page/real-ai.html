@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Inspector — Real AI Test</title>
+  <style>
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --surface2: #242837;
+      --border: #2e3348; --text: #e4e6f0; --text-muted: #8b8fa8;
+      --accent: #6366f1; --accent-hover: #818cf8;
+      --green: #22c55e; --orange: #f59e0b; --red: #ef4444;
+      --cyan: #06b6d4; --pink: #ec4899; --purple: #a855f7;
+      --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* Header */
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
+    header h1 { font-size: 1.25rem; font-weight: 700; background: linear-gradient(135deg, var(--accent), var(--cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .badge { font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 99px; border: 1px solid var(--border); color: var(--text-muted); }
+    .badge.on { border-color: var(--green); color: var(--green); }
+    .badge.off { border-color: var(--red); color: var(--red); }
+    .header-actions { margin-left: auto; display: flex; gap: 0.5rem; }
+
+    /* Layout */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+    .sidebar { width: 280px; flex-shrink: 0; border-right: 1px solid var(--border); overflow-y: auto; background: var(--surface); }
+    .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Sidebar sections */
+    .section { padding: 1rem; border-bottom: 1px solid var(--border); }
+    .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .tool-chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.6rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; font-size: 0.75rem; margin: 0.15rem; }
+    .tool-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .tool-chip button { background: none; border: none; color: var(--red); cursor: pointer; font-size: 0.85rem; padding: 0; line-height: 1; }
+
+    /* Buttons */
+    button { font-family: inherit; font-size: 0.8rem; font-weight: 500; padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer; transition: all 0.15s; }
+    button:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button:active { transform: scale(0.97); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.primary:hover { background: var(--accent-hover); }
+    button.danger { border-color: var(--red); color: var(--red); }
+    button.danger:hover { background: var(--red); color: #fff; }
+    button.sm { font-size: 0.7rem; padding: 0.25rem 0.5rem; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+
+    /* Chat messages */
+    .messages { flex: 1; overflow-y: auto; padding: 1rem 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+    .msg { max-width: 85%; padding: 0.75rem 1rem; border-radius: 12px; font-size: 0.875rem; line-height: 1.55; word-break: break-word; }
+    .msg.user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .msg.assistant { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .msg.tool-call { align-self: flex-start; background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; font-family: var(--mono); font-size: 0.78rem; }
+    .msg.tool-result { align-self: flex-start; background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; font-family: var(--mono); font-size: 0.78rem; }
+    .msg.error { align-self: flex-start; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--red); }
+    .msg.system { align-self: center; background: none; color: var(--text-muted); font-size: 0.78rem; text-align: center; padding: 0.25rem; }
+    .msg-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; opacity: 0.7; }
+    .msg pre { white-space: pre-wrap; word-break: break-all; margin: 0; }
+    .msg .streaming-cursor { display: inline-block; width: 2px; height: 1em; background: var(--accent); animation: blink 1s step-end infinite; vertical-align: text-bottom; margin-left: 2px; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Input area */
+    .input-area { padding: 1rem 1.5rem; border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 0.75rem; align-items: flex-end; }
+    .input-area textarea { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 0.65rem 1rem; color: var(--text); font-family: inherit; font-size: 0.875rem; resize: none; min-height: 42px; max-height: 120px; line-height: 1.4; }
+    .input-area textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
+    .input-area button.send { min-width: 70px; height: 42px; }
+
+    /* Settings inputs */
+    .setting-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .setting-row label { font-size: 0.75rem; color: var(--text-muted); min-width: 50px; }
+    .setting-row input, .setting-row select { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.35rem 0.5rem; color: var(--text); font-family: inherit; font-size: 0.75rem; }
+    .setting-row input:focus, .setting-row select:focus { outline: none; border-color: var(--accent); }
+
+    .empty-state { color: var(--text-muted); text-align: center; padding: 3rem 2rem; font-size: 0.85rem; }
+    .empty-state h3 { font-size: 1rem; margin-bottom: 0.5rem; color: var(--text); }
+
+    @media (max-width: 700px) { .sidebar { display: none; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>AI Inspector Test</h1>
+  <span class="badge" id="badge-api">No API Key</span>
+  <span class="badge" id="badge-tools">0 tools</span>
+  <div class="header-actions">
+    <button onclick="resetChat()" class="sm">Reset Chat</button>
+    <button onclick="copyTrace()" class="sm">Copy Trace</button>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- Sidebar: Settings + Tools -->
+  <div class="sidebar">
+    <div class="section">
+      <div class="section-title">Gemini API</div>
+      <div class="setting-row">
+        <label>Key</label>
+        <input type="password" id="api-key" placeholder="Gemini API key...">
+      </div>
+      <div class="setting-row">
+        <label>Model</label>
+        <input type="text" id="model-name" value="gemini-2.5-flash">
+      </div>
+      <div class="btn-row">
+        <button onclick="saveSettings()" class="primary sm">Save</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">WebMCP Tools (navigator.modelContext)</div>
+      <div id="tool-list"></div>
+      <div class="btn-row">
+        <button onclick="registerAllTools()" class="primary sm">Register All</button>
+        <button onclick="safeClearContext()" class="danger sm">Clear All</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Quick Prompts</div>
+      <div class="btn-row" style="flex-direction: column">
+        <button onclick="sendQuick('What is 234 * 567 + 89?')" class="sm" style="text-align: left">Calculator: 234 * 567 + 89</button>
+        <button onclick="sendQuick('What is the weather in San Francisco and Tokyo?')" class="sm" style="text-align: left">Weather: SF + Tokyo</button>
+        <button onclick="sendQuick('Search the web for WebMCP specification')" class="sm" style="text-align: left">Search: WebMCP spec</button>
+        <button onclick="sendQuick('What time is it? Also calculate 2^10.')" class="sm" style="text-align: left">Multi-tool: time + calc</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Area -->
+  <div class="chat-area">
+    <div class="messages" id="messages">
+      <div class="empty-state">
+        <h3>Real AI Chat with Tool Calling</h3>
+        <p>Set your Gemini API key, register tools, then send a message.<br>
+        The AI Inspector extension will observe all events.</p>
+      </div>
+    </div>
+    <div class="input-area">
+      <textarea id="user-input" placeholder="Ask the AI something... (Enter to send)" rows="1"></textarea>
+      <button class="send primary" id="send-btn" onclick="handleSend()" disabled>Send</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { GoogleGenAI } from 'https://esm.run/@google/genai';
+
+// ── State ────────────────────────────────────────────────────
+let genAI = null;
+let chat = null;
+const trace = [];
+const registeredTools = new Map();
+
+// Expose to inline handlers
+window.resetChat = resetChat;
+window.copyTrace = copyTrace;
+window.saveSettings = saveSettings;
+window.registerAllTools = registerAllTools;
+window.safeClearContext = safeClearContext;
+window.handleSend = handleSend;
+window.sendQuick = sendQuick;
+window.unregisterOneTool = unregisterOneTool;
+
+// ── DOM refs ─────────────────────────────────────────────────
+const messagesEl = document.getElementById('messages');
+const userInput = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+const apiKeyInput = document.getElementById('api-key');
+const modelInput = document.getElementById('model-name');
+const badgeApi = document.getElementById('badge-api');
+const badgeTools = document.getElementById('badge-tools');
+const toolListEl = document.getElementById('tool-list');
+
+// ── Tool Definitions ─────────────────────────────────────────
+const TOOL_DEFS = {
+  calculator: {
+    name: 'calculator',
+    description: 'Evaluate a mathematical expression and return the numeric result. Supports basic arithmetic, exponents, parentheses.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        expression: { type: 'string', description: 'The math expression to evaluate, e.g. "2 + 2" or "sqrt(144)"' }
+      },
+      required: ['expression']
+    },
+    execute(args) {
+      try {
+        const result = Function('"use strict"; return (' + args.expression + ')')();
+        return JSON.stringify({ result: String(result) });
+      } catch (e) {
+        return JSON.stringify({ error: e.message });
+      }
+    }
+  },
+
+  get_weather: {
+    name: 'get_weather',
+    description: 'Get the current weather conditions for a given city. Returns temperature, conditions, and humidity.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        city: { type: 'string', description: 'City name, e.g. "San Francisco"' },
+        units: { type: 'string', enum: ['celsius', 'fahrenheit'], description: 'Temperature units (default: celsius)' }
+      },
+      required: ['city']
+    },
+    execute(args) {
+      const temp = Math.round(10 + Math.random() * 25);
+      const conditions = ['sunny', 'cloudy', 'partly cloudy', 'rainy', 'windy', 'foggy'];
+      const humidity = Math.round(30 + Math.random() * 50);
+      return JSON.stringify({
+        city: args.city,
+        temperature: temp,
+        units: args.units || 'celsius',
+        conditions: conditions[Math.floor(Math.random() * conditions.length)],
+        humidity: humidity + '%'
+      });
+    }
+  },
+
+  web_search: {
+    name: 'web_search',
+    description: 'Search the web for information. Returns a list of relevant results with titles, URLs, and snippets.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'The search query' },
+        max_results: { type: 'number', description: 'Maximum number of results to return (default: 3)' }
+      },
+      required: ['query']
+    },
+    execute(args) {
+      const n = args.max_results || 3;
+      const results = [];
+      for (let i = 1; i <= n; i++) {
+        results.push({
+          title: `Result ${i}: ${args.query}`,
+          url: `https://example.com/search?q=${encodeURIComponent(args.query)}&p=${i}`,
+          snippet: `This is a simulated search result for "${args.query}". In a real implementation, this would contain actual web content.`
+        });
+      }
+      return JSON.stringify({ results });
+    }
+  },
+
+  get_current_time: {
+    name: 'get_current_time',
+    description: 'Get the current date and time in the specified timezone.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        timezone: { type: 'string', description: 'IANA timezone name, e.g. "America/New_York". Defaults to local time.' }
+      }
+    },
+    execute(args) {
+      const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+      if (args.timezone) opts.timeZone = args.timezone;
+      try {
+        return JSON.stringify({
+          datetime: new Date().toLocaleString('en-US', opts),
+          timezone: args.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+          iso: new Date().toISOString()
+        });
+      } catch (e) {
+        return JSON.stringify({ error: e.message });
+      }
+    }
+  },
+
+  get_page_info: {
+    name: 'get_page_info',
+    description: 'Get information about the current web page including title, URL, meta description, and word count.',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    },
+    execute() {
+      return JSON.stringify({
+        title: document.title,
+        url: window.location.href,
+        description: document.querySelector('meta[name="description"]')?.content || '(none)',
+        wordCount: document.body?.innerText?.split(/\s+/).length || 0,
+        language: document.documentElement.lang || 'unknown'
+      });
+    }
+  }
+};
+
+// ── navigator.modelContext — Tool Registration ───────────────
+// Register tools with the real/mock WebMCP API so the AI Inspector
+// extension can observe TOOL_REGISTERED, TOOL_CALL, TOOL_RESULT_AI events.
+
+function safeRegister(toolDef) {
+  try { navigator.modelContext.unregisterTool(toolDef.name); } catch (_) {}
+  const registration = {
+    name: toolDef.name,
+    description: toolDef.description,
+    inputSchema: toolDef.inputSchema,
+    execute(args) {
+      return toolDef.execute(typeof args === 'string' ? JSON.parse(args) : args);
+    }
+  };
+  navigator.modelContext.registerTool(registration);
+  registeredTools.set(toolDef.name, toolDef);
+}
+
+function registerAllTools() {
+  for (const def of Object.values(TOOL_DEFS)) {
+    safeRegister(def);
+  }
+  updateToolUI();
+  addSystemMsg(`Registered ${registeredTools.size} tools via navigator.modelContext`);
+}
+
+function safeClearContext() {
+  try { navigator.modelContext.clearContext(); } catch (_) {}
+  registeredTools.clear();
+  updateToolUI();
+  addSystemMsg('All tools cleared');
+}
+
+function unregisterOneTool(name) {
+  try { navigator.modelContext.unregisterTool(name); } catch (_) {}
+  registeredTools.delete(name);
+  updateToolUI();
+}
+
+function updateToolUI() {
+  const names = [...registeredTools.keys()];
+  badgeTools.textContent = `${names.length} tools`;
+  badgeTools.className = 'badge ' + (names.length > 0 ? 'on' : 'off');
+  toolListEl.innerHTML = names.length === 0
+    ? '<div style="color:var(--text-muted);font-size:0.75rem;padding:0.25rem 0">No tools registered</div>'
+    : names.map(n => `<span class="tool-chip"><span class="dot"></span>${n}<button onclick="unregisterOneTool('${n}')">&times;</button></span>`).join('');
+}
+
+// If navigator.modelContext doesn't exist (no Chrome Canary), install a minimal mock
+if (!navigator.modelContext) {
+  const _tools = new Map();
+  Object.defineProperty(navigator, 'modelContext', {
+    value: {
+      registerTool(t) { if (_tools.has(t.name)) throw new DOMException('Duplicate','InvalidStateError'); _tools.set(t.name, t); },
+      unregisterTool(n) { if (!_tools.has(n)) throw new DOMException('Not found','InvalidStateError'); _tools.delete(n); },
+      provideContext(p) { _tools.clear(); (p?.tools||[]).forEach(t => _tools.set(t.name, t)); },
+      clearContext() { _tools.clear(); }
+    }, configurable: true
+  });
+}
+if (!navigator.modelContextTesting) {
+  Object.defineProperty(navigator, 'modelContextTesting', {
+    value: {
+      listTools() { return [...registeredTools.values()].map(t => ({ name: t.name, description: t.description, inputSchema: JSON.stringify(t.inputSchema) })); },
+      async executeTool(name, argsJson) {
+        const t = registeredTools.get(name);
+        if (!t) throw new DOMException('Not found','InvalidStateError');
+        return t.execute(typeof argsJson === 'string' ? JSON.parse(argsJson) : argsJson);
+      },
+      registerToolsChangedCallback() {}
+    }, configurable: true
+  });
+}
+
+// ── Gemini API Integration ───────────────────────────────────
+// Same pattern as model-context-tool-inspector's sidebar.js
+
+function getFormattedDate() {
+  return new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function getConfig() {
+  const systemInstruction = [
+    'You are a helpful assistant embedded in a browser tab.',
+    'You have access to tools. Use them when relevant to the user\'s request.',
+    `Today's date is: ${getFormattedDate()}.`,
+    'When the user asks to calculate something, use the calculator tool.',
+    'When the user asks about weather, use the get_weather tool.',
+    'When the user asks to search, use the web_search tool.',
+    'When asked about the current time, use the get_current_time tool.',
+    'When asked about the current page, use the get_page_info tool.',
+    'Always use tools before answering if they are relevant.',
+    'After receiving tool results, summarize them in a natural, helpful way.',
+  ];
+
+  const tools = [...registeredTools.values()];
+  const functionDeclarations = tools.map(tool => ({
+    name: tool.name,
+    description: tool.description,
+    parametersJsonSchema: tool.inputSchema || { type: 'object', properties: {} },
+  }));
+
+  return { systemInstruction, tools: [{ functionDeclarations }] };
+}
+
+async function promptAI(message) {
+  if (!genAI) { addErrorMsg('No API key set. Enter your Gemini API key in the sidebar.'); return; }
+  if (registeredTools.size === 0) { addErrorMsg('No tools registered. Click "Register All" first.'); return; }
+
+  addUserMsg(message);
+  trace.push({ userPrompt: message });
+
+  chat ??= genAI.chats.create({ model: modelInput.value || 'gemini-2.5-flash' });
+
+  const sendParams = { message, config: getConfig() };
+  let currentResult;
+  try {
+    currentResult = await chat.sendMessage(sendParams);
+  } catch (e) {
+    addErrorMsg(`API error: ${e.message}`);
+    trace.push({ error: e.message });
+    return;
+  }
+
+  let done = false;
+  while (!done) {
+    const response = currentResult;
+    trace.push({ response: { text: response.text, functionCalls: response.functionCalls } });
+    const functionCalls = response.functionCalls || [];
+
+    if (functionCalls.length === 0) {
+      if (response.text) {
+        addAssistantMsg(response.text.trim());
+      } else {
+        addErrorMsg('AI returned no text and no tool calls.');
+      }
+      done = true;
+    } else {
+      // Execute each tool call — this triggers the extension's interceptor
+      const toolResponses = [];
+      for (const { name, args } of functionCalls) {
+        const inputArgs = JSON.stringify(args);
+        addToolCallMsg(name, inputArgs);
+
+        try {
+          // Execute via navigator.modelContextTesting (same as model-context-tool-inspector)
+          const result = await navigator.modelContextTesting.executeTool(name, inputArgs);
+          toolResponses.push({ functionResponse: { name, response: { result } } });
+          addToolResultMsg(name, result);
+        } catch (e) {
+          toolResponses.push({ functionResponse: { name, response: { error: e.message } } });
+          addToolResultMsg(name, JSON.stringify({ error: e.message }));
+        }
+      }
+
+      // Send tool results back to the model (continues the conversation loop)
+      const followUp = { message: toolResponses, config: getConfig() };
+      trace.push({ toolFollowUp: followUp });
+      try {
+        currentResult = await chat.sendMessage(followUp);
+      } catch (e) {
+        addErrorMsg(`API error on tool follow-up: ${e.message}`);
+        trace.push({ error: e.message });
+        done = true;
+      }
+    }
+  }
+}
+
+// ── Chat UI ──────────────────────────────────────────────────
+
+let emptyCleared = false;
+function clearEmpty() {
+  if (!emptyCleared) { messagesEl.innerHTML = ''; emptyCleared = true; }
+}
+
+function addMsg(cls, html) {
+  clearEmpty();
+  const el = document.createElement('div');
+  el.className = 'msg ' + cls;
+  el.innerHTML = html;
+  messagesEl.appendChild(el);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return el;
+}
+
+function addUserMsg(text) { addMsg('user', escHtml(text)); }
+function addAssistantMsg(text) { addMsg('assistant', formatMarkdown(text)); }
+function addErrorMsg(text) { addMsg('error', escHtml(text)); }
+function addSystemMsg(text) { addMsg('system', escHtml(text)); }
+
+function addToolCallMsg(name, args) {
+  let formatted = args;
+  try { formatted = JSON.stringify(JSON.parse(args), null, 2); } catch (_) {}
+  addMsg('tool-call', `<div class="msg-label">Tool Call: ${escHtml(name)}</div><pre>${escHtml(formatted)}</pre>`);
+}
+
+function addToolResultMsg(name, result) {
+  let formatted = result;
+  try { formatted = JSON.stringify(JSON.parse(result), null, 2); } catch (_) {}
+  addMsg('tool-result', `<div class="msg-label">Result: ${escHtml(name)}</div><pre>${escHtml(formatted)}</pre>`);
+}
+
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function formatMarkdown(text) {
+  return escHtml(text)
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`(.*?)`/g, '<code style="background:var(--surface2);padding:0.1rem 0.3rem;border-radius:3px;font-size:0.85em">$1</code>')
+    .replace(/\n/g, '<br>');
+}
+
+// ── Input handling ───────────────────────────────────────────
+
+userInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+});
+
+userInput.addEventListener('input', () => {
+  userInput.style.height = 'auto';
+  userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
+});
+
+function handleSend() {
+  const text = userInput.value.trim();
+  if (!text) return;
+  userInput.value = '';
+  userInput.style.height = 'auto';
+  sendBtn.disabled = true;
+  promptAI(text).finally(() => { sendBtn.disabled = !genAI; });
+}
+
+function sendQuick(text) {
+  userInput.value = text;
+  handleSend();
+}
+
+// ── Settings ─────────────────────────────────────────────────
+
+function saveSettings() {
+  const key = apiKeyInput.value.trim();
+  if (key) {
+    localStorage.setItem('gemini_api_key', key);
+    localStorage.setItem('gemini_model', modelInput.value);
+    initAPI();
+    addSystemMsg('API key saved. Ready to chat.');
+  }
+}
+
+function initAPI() {
+  const key = localStorage.getItem('gemini_api_key') || '';
+  const model = localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
+  apiKeyInput.value = key;
+  modelInput.value = model;
+
+  if (key) {
+    genAI = new GoogleGenAI({ apiKey: key });
+    badgeApi.textContent = 'API Ready';
+    badgeApi.className = 'badge on';
+    sendBtn.disabled = false;
+  } else {
+    genAI = null;
+    badgeApi.textContent = 'No API Key';
+    badgeApi.className = 'badge off';
+    sendBtn.disabled = true;
+  }
+  chat = null;
+}
+
+function resetChat() {
+  chat = null;
+  trace.length = 0;
+  messagesEl.innerHTML = '';
+  emptyCleared = false;
+  addSystemMsg('Chat reset. Conversation history cleared.');
+}
+
+function copyTrace() {
+  navigator.clipboard.writeText(JSON.stringify(trace, null, 2))
+    .then(() => addSystemMsg('Trace copied to clipboard.'))
+    .catch(() => addSystemMsg('Failed to copy trace.'));
+}
+
+// ── Listen for ai-inspector events (for debugging) ───────────
+window.addEventListener('message', (e) => {
+  if (e.data?.source === 'ai-inspector') {
+    console.log('[AI Inspector Event]', e.data.type, e.data.data);
+  }
+});
+
+// ── Init ─────────────────────────────────────────────────────
+initAPI();
+registerAllTools();
+updateToolUI();
+</script>
+
+</body>
+</html>

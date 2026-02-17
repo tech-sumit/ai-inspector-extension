@@ -113,12 +113,41 @@ const __aiInspector: AiInspectorEmitter = {
   const mc = navigator.modelContext;
   if (!mc) return;
 
+  // Wrap a tool definition's execute callback so we emit TOOL_CALL / TOOL_RESULT_AI events.
+  function wrapToolExecute(toolDef: Record<string, unknown>): Record<string, unknown> {
+    if (typeof toolDef.execute !== "function") return toolDef;
+    const origExecute = toolDef.execute as (args: unknown) => unknown;
+    const wrappedDef = { ...toolDef };
+    wrappedDef.execute = async function (args: unknown) {
+      __aiInspector.emit("TOOL_CALL", {
+        tool: toolDef.name, args, ts: Date.now(),
+      });
+      try {
+        const result = await origExecute(args);
+        __aiInspector.emit("TOOL_RESULT_AI", {
+          tool: toolDef.name, result, ts: Date.now(),
+        });
+        return result;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        __aiInspector.emit("TOOL_RESULT_AI", {
+          tool: toolDef.name, error: message, ts: Date.now(),
+        });
+        throw err;
+      }
+    };
+    return wrappedDef;
+  }
+
   // Intercept registerTool() — used by useWebMCPTool hook for individual tool registration.
   // Events are emitted AFTER calling the original so that if it throws
   // (e.g. duplicate name, invalid schema) we don't record a false positive.
+  // The execute callback is wrapped BEFORE calling the original so the browser
+  // stores the instrumented version.
   const origRegister = mc.registerTool.bind(mc);
   mc.registerTool = function (toolDef: Record<string, unknown>) {
-    const result = origRegister(toolDef);
+    const wrappedDef = wrapToolExecute(toolDef);
+    const result = origRegister(wrappedDef);
     __aiInspector.emit("TOOL_REGISTERED", {
       tool: {
         name: toolDef.name,
@@ -151,7 +180,15 @@ const __aiInspector: AiInspectorEmitter = {
   if (typeof mc.provideContext === "function") {
     const origProvideContext = mc.provideContext.bind(mc);
     mc.provideContext = function (params: { tools: Array<Record<string, unknown>> }) {
-      const result = origProvideContext(params);
+      // Wrap execute callbacks before passing to the browser so it stores
+      // the instrumented versions.
+      const wrappedParams = {
+        ...params,
+        tools: Array.isArray(params?.tools)
+          ? params.tools.map(wrapToolExecute)
+          : params?.tools,
+      };
+      const result = origProvideContext(wrappedParams);
 
       // provideContext replaces the entire tool set, so emit CONTEXT_CLEARED first
       // so deriveToolsFromEvents correctly starts fresh for this batch.

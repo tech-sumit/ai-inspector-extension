@@ -7,11 +7,22 @@
  * Also listens for WebMCP window events (toolactivated, toolcancel).
  */
 
+/** Send to background, logging errors when the service worker is inactive. */
+function forward(msg: Record<string, unknown>) {
+  try {
+    chrome.runtime?.sendMessage(msg).catch((err: unknown) => {
+      console.warn("[AI Inspector Bridge] sendMessage failed:", err);
+    });
+  } catch (err) {
+    console.warn("[AI Inspector Bridge] Extension context invalidated:", err);
+  }
+}
+
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   if (event.data?.source !== "ai-inspector") return;
 
-  chrome.runtime.sendMessage({
+  forward({
     source: "ai-inspector",
     type: event.data.type,
     data: event.data.data,
@@ -20,7 +31,7 @@ window.addEventListener("message", (event) => {
 
 window.addEventListener("toolactivated", ((event: CustomEvent & { toolName?: string }) => {
   const toolName = event.toolName ?? event.detail?.toolName ?? "unknown";
-  chrome.runtime.sendMessage({
+  forward({
     source: "ai-inspector",
     type: "TOOL_ACTIVATED",
     data: { toolName, ts: Date.now() },
@@ -29,7 +40,7 @@ window.addEventListener("toolactivated", ((event: CustomEvent & { toolName?: str
 
 window.addEventListener("toolcancel", ((event: CustomEvent & { toolName?: string }) => {
   const toolName = event.toolName ?? event.detail?.toolName ?? "unknown";
-  chrome.runtime.sendMessage({
+  forward({
     source: "ai-inspector",
     type: "TOOL_CANCEL",
     data: { toolName, ts: Date.now() },

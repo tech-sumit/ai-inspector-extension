@@ -37,7 +37,8 @@ export class TabManager {
       if (portTabId === undefined || portTabId === tabId) {
         try {
           port.postMessage(message);
-        } catch {
+        } catch (err) {
+          console.warn("[AI Inspector BG] Port postMessage failed, removing port:", err);
           this.ports.delete(port);
           this.portToTab.delete(port);
         }
