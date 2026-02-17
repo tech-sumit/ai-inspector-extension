@@ -1,0 +1,16 @@
+---
+description: Rules for ai-inspector-extension
+globs: ["**/*.{ts,tsx}"]
+---
+
+# ai-inspector-extension Rules
+
+- This is a Chrome DevTools extension using Manifest V3.
+- Content scripts MUST compile to IIFE format (not ESM) via vite.config.content.ts.
+- MAIN world script (ai-interceptor.ts) is injected via chrome.scripting.executeScript({ world: 'MAIN' }).
+- ISOLATED world script (bridge.ts) is declared in manifest content_scripts.
+- Panel uses React Context + useReducer for state management. NO Redux.
+- Communication: content script -> background (chrome.runtime.sendMessage), panel -> background (chrome.runtime.connect port).
+- NO chrome.debugger API. Tool discovery uses chrome.devtools.inspectedWindow.eval() and content scripts.
+- Tool APIs: modelContextTesting.listTools(), .executeTool(name, args), .registerToolsChangedCallback(cb).
+- All tool args/results are DOMString (JSON-encoded strings) per WebMCP spec.

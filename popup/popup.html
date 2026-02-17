@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AI Inspector</title>
+  <style>
+    body { width: 280px; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 13px; color: #333; margin: 0; }
+    h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+    .stat { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
+    .stat:last-child { border-bottom: none; }
+    .label { color: #666; }
+    .value { font-weight: 600; }
+    .hint { margin-top: 12px; color: #999; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <h2>AI Inspector</h2>
+  <div class="stat"><span class="label">Status</span><span class="value" id="status">Active</span></div>
+  <div class="stat"><span class="label">Tools detected</span><span class="value" id="toolCount">--</span></div>
+  <div class="stat"><span class="label">AI Sessions</span><span class="value" id="sessionCount">--</span></div>
+  <p class="hint">Open DevTools → AI Inspector panel for full details.</p>
+  <script src="popup.ts" type="module"></script>
+</body>
+</html>

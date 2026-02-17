@@ -1,0 +1,4 @@
+node_modules/
+dist/
+*.tsbuildinfo
+ai-inspector-extension.zip

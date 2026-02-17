@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "AI Inspector",
+  "version": "1.0.0",
+  "description": "DevTools for window.ai and WebMCP introspection",
+  "devtools_page": "devtools/devtools.html",
+  "permissions": ["activeTab", "scripting", "tabs", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "run_at": "document_start",
+      "js": ["content/bridge.js"],
+      "all_frames": false
+    }
+  ],
+  "background": {
+    "service_worker": "background/index.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "icons": {}
+}
