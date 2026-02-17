@@ -7,22 +7,14 @@ interface InspectorEvent {
   [key: string]: unknown;
 }
 
-interface DiscoveredTool {
-  name: string;
-  description: string;
-  inputSchema: string;
-}
-
 interface InspectorState {
   events: InspectorEvent[];
-  tools: DiscoveredTool[];
   connected: boolean;
 }
 
 type Action =
-  | { type: "SET_STATE"; events: InspectorEvent[]; tools: DiscoveredTool[] }
+  | { type: "SET_STATE"; events: InspectorEvent[] }
   | { type: "ADD_EVENT"; event: InspectorEvent }
-  | { type: "UPDATE_TOOLS"; tools: DiscoveredTool[] }
   | { type: "CLEAR_EVENTS" }
   | { type: "PAGE_RELOAD" }
   | { type: "SET_CONNECTED"; connected: boolean };
@@ -30,15 +22,13 @@ type Action =
 function reducer(state: InspectorState, action: Action): InspectorState {
   switch (action.type) {
     case "SET_STATE":
-      return { ...state, events: action.events, tools: action.tools };
+      return { ...state, events: action.events };
     case "ADD_EVENT":
       return { ...state, events: [...state.events, action.event] };
-    case "UPDATE_TOOLS":
-      return { ...state, tools: action.tools };
     case "CLEAR_EVENTS":
-      return { ...state, events: [], tools: [] };
+      return { ...state, events: [] };
     case "PAGE_RELOAD":
-      return { ...state, events: [...state.events, { type: "PAGE_RELOAD", ts: Date.now() }], tools: [] };
+      return { ...state, events: [...state.events, { type: "PAGE_RELOAD", ts: Date.now() }] };
     case "SET_CONNECTED":
       return { ...state, connected: action.connected };
     default:
@@ -48,7 +38,6 @@ function reducer(state: InspectorState, action: Action): InspectorState {
 
 const initialState: InspectorState = {
   events: [],
-  tools: [],
   connected: false,
 };
 
@@ -82,24 +71,18 @@ export function InspectorProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "SET_CONNECTED", connected: true });
 
     const handler = (msg: Record<string, unknown>) => {
-      // flushSync forces React to commit updates synchronously so the
-      // panel refreshes immediately when events arrive from the background
-      // service worker.  Without this, Chrome DevTools panel rendering may
-      // defer batched React updates until the next user interaction.
       flushSync(() => {
         if (msg.type === "STATE") {
           dispatch({
             type: "SET_STATE",
             events: (msg.events ?? []) as InspectorEvent[],
-            tools: (msg.tools ?? []) as DiscoveredTool[],
           });
         } else if (msg.type === "EVENT") {
           dispatch({ type: "ADD_EVENT", event: msg.event as InspectorEvent });
-        } else if (msg.type === "TOOLS_UPDATE") {
-          dispatch({ type: "UPDATE_TOOLS", tools: msg.tools as DiscoveredTool[] });
         } else if (msg.type === "PAGE_RELOAD") {
           dispatch({ type: "PAGE_RELOAD" });
         }
+        // TOOLS_UPDATE messages are ignored — tool info is derived from events
       });
     };
 

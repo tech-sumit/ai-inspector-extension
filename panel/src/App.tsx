@@ -5,6 +5,7 @@ import { EventTable } from "./components/EventTable.js";
 import { EventDetail } from "./components/EventDetail.js";
 import { StatusBar } from "./components/StatusBar.js";
 import { getCategory } from "./lib/event-utils.js";
+import { mergeEvents } from "./lib/merge-events.js";
 
 export function App() {
   return (
@@ -24,7 +25,9 @@ function NetworkPanel() {
     return state.events.filter((e) => getCategory(e.type) === categoryFilter);
   }, [state.events, categoryFilter]);
 
-  const selectedEvent = selectedIndex !== null ? filteredEvents[selectedIndex] ?? null : null;
+  const entries = useMemo(() => mergeEvents(filteredEvents), [filteredEvents]);
+
+  const selectedEntry = selectedIndex !== null ? entries[selectedIndex] ?? null : null;
 
   const handleFilterChange = useCallback((id: string) => {
     setCategoryFilter(id);
@@ -45,6 +48,10 @@ function NetworkPanel() {
     setSelectedIndex(null);
   }, []);
 
+  const handleExecuteTool = useCallback((name: string, args: Record<string, unknown>) => {
+    sendMessage({ type: "EXECUTE_TOOL", name, inputArguments: args });
+  }, [sendMessage]);
+
   return (
     <div style={{
       display: "flex",
@@ -55,35 +62,35 @@ function NetworkPanel() {
       color: "#333",
       background: "#fff",
     }}>
-      {/* Filter bar */}
       <FilterBar
         active={categoryFilter}
         onChange={handleFilterChange}
-        eventCount={filteredEvents.length}
+        eventCount={entries.length}
         onClear={handleClear}
         connected={state.connected}
       />
 
-      {/* Main content: table + detail pane */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Event list table */}
-        <div style={{ flex: selectedEvent ? "0 0 55%" : 1, overflow: "hidden", transition: "flex 0.15s ease" }}>
+        <div style={{ flex: selectedEntry ? "0 0 55%" : 1, overflow: "hidden", transition: "flex 0.15s ease" }}>
           <EventTable
-            events={filteredEvents}
+            entries={entries}
             selectedIndex={selectedIndex}
             onSelect={handleSelect}
+            compact={!!selectedEntry}
           />
         </div>
 
-        {/* Detail pane - slides in from right */}
-        {selectedEvent && (
+        {selectedEntry && (
           <div style={{ flex: "0 0 45%", overflow: "hidden" }}>
-            <EventDetail event={selectedEvent} onClose={handleClose} />
+            <EventDetail
+              entry={selectedEntry}
+              onClose={handleClose}
+              onExecuteTool={handleExecuteTool}
+            />
           </div>
         )}
       </div>
 
-      {/* Status bar */}
       <StatusBar />
     </div>
   );

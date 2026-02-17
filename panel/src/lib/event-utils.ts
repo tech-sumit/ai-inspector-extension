@@ -91,7 +91,10 @@ export function getEventStatus(e: InspectorEvent): { label: string; color: strin
       return { label: "error", color: "#f44336" };
     case "PROMPT_RESPONSE":
     case "STREAM_END":
+      return { label: "ok", color: "#4caf50" };
     case "TOOL_RESULT_AI":
+      if (e.error != null && e.error !== "") return { label: "error", color: "#f44336" };
+      if (e.result == null) return { label: "empty", color: "#ff9800" };
       return { label: "ok", color: "#4caf50" };
     case "PROMPT_SENT":
     case "STREAM_START":
@@ -110,6 +113,13 @@ export function getEventStatus(e: InspectorEvent): { label: string; color: strin
     default:
       return { label: "—", color: "#999" };
   }
+}
+
+/** Returns true if the event itself represents a failure. */
+export function isEventError(e: InspectorEvent): boolean {
+  if (e.type === "PROMPT_ERROR") return true;
+  if (e.type === "TOOL_RESULT_AI" && e.error != null && e.error !== "") return true;
+  return false;
 }
 
 /** Extract the payload/input data for the Payload tab. */
