@@ -1,5 +1,5 @@
 {
-  "name": "ai-inspector-extension",
+  "name": "webmcp-debugger-chrome-extension",
   "version": "1.0.0",
   "private": true,
   "description": "Chrome DevTools extension for window.ai and WebMCP introspection",
@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint panel/src/ content/ background/",
     "test": "vitest run",
-    "package": "cd dist && zip -r ../ai-inspector-extension.zip ."
+    "package": "cd dist && zip -r ../webmcp-debugger-chrome-extension.zip ."
   },
   "devDependencies": {
     "@tech-sumit/ai-inspector-types": "^0.2.0",

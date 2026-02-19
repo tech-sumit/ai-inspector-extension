@@ -38,7 +38,7 @@ export class TabManager {
         try {
           port.postMessage(message);
         } catch (err) {
-          console.warn("[AI Inspector BG] Port postMessage failed, removing port:", err);
+          console.warn("[WebMCP Debugger BG] Port postMessage failed, removing port:", err);
           this.ports.delete(port);
           this.portToTab.delete(port);
         }

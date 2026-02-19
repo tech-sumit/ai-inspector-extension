@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Inspector — Real AI Test</title>
+  <title>WebMCP Debugger — Real AI Test</title>
   <style>
     :root {
       --bg: #0f1117; --surface: #1a1d27; --surface2: #242837;
@@ -83,7 +83,7 @@
 <body>
 
 <header>
-  <h1>AI Inspector Test</h1>
+  <h1>WebMCP Debugger Test</h1>
   <span class="badge" id="badge-api">No API Key</span>
   <span class="badge" id="badge-tools">0 tools</span>
   <div class="header-actions">
@@ -136,7 +136,7 @@
       <div class="empty-state">
         <h3>Real AI Chat with Tool Calling</h3>
         <p>Set your Gemini API key, register tools, then send a message.<br>
-        The AI Inspector extension will observe all events.</p>
+        The WebMCP Debugger extension will observe all events.</p>
       </div>
     </div>
     <div class="input-area">
@@ -291,7 +291,7 @@ const TOOL_DEFS = {
 };
 
 // ── navigator.modelContext — Tool Registration ───────────────
-// Register tools with the real/mock WebMCP API so the AI Inspector
+// Register tools with the real/mock WebMCP API so the WebMCP Debugger
 // extension can observe TOOL_REGISTERED, TOOL_CALL, TOOL_RESULT_AI events.
 
 function safeRegister(toolDef) {
@@ -573,10 +573,10 @@ function copyTrace() {
     .catch(() => addSystemMsg('Failed to copy trace.'));
 }
 
-// ── Listen for ai-inspector events (for debugging) ───────────
+// ── Listen for webmcp-debugger events (for debugging) ───────────
 window.addEventListener('message', (e) => {
-  if (e.data?.source === 'ai-inspector') {
-    console.log('[AI Inspector Event]', e.data.type, e.data.data);
+  if (e.data?.source === 'webmcp-debugger') {
+    console.log('[WebMCP Debugger Event]', e.data.type, e.data.data);
   }
 });
 

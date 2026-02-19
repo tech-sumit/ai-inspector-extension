@@ -1,4 +1,4 @@
-# ai-inspector-extension
+# webmcp-debugger-chrome-extension
 
 Chrome DevTools extension for window.ai + WebMCP introspection.
 

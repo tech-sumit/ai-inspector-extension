@@ -18,7 +18,7 @@ interface ToolInfo {
   inputSchema: string;
 }
 
-const STORAGE_KEY = "ai_inspector_events";
+const STORAGE_KEY = "webmcp_debugger_events";
 const FLUSH_DELAY_MS = 300;
 
 export class EventStore {
@@ -86,7 +86,7 @@ export class EventStore {
         }
       }
     } catch (err) {
-      console.warn("[AI Inspector BG] Failed to hydrate from session storage:", err);
+      console.warn("[WebMCP Debugger BG] Failed to hydrate from session storage:", err);
     }
   }
 
@@ -102,7 +102,7 @@ export class EventStore {
       if (events.length > 0) data[String(tabId)] = events;
     }
     chrome.storage.session.set({ [STORAGE_KEY]: data }).catch((err: unknown) => {
-      console.warn("[AI Inspector BG] Failed to persist events:", err);
+      console.warn("[WebMCP Debugger BG] Failed to persist events:", err);
     });
   }
 

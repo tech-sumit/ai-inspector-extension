@@ -1,8 +1,8 @@
 chrome.devtools.panels.create(
-  "AI Inspector",
+  "WebMCP Debugger",
   "",
   "panel/index.html",
   () => {
-    console.log("[AI Inspector] DevTools panel created");
+    console.log("[WebMCP Debugger] DevTools panel created");
   },
 );

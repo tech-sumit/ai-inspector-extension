@@ -9,7 +9,7 @@ async function updateStats() {
       if (el) el.textContent = String(response.tools.length);
     }
   } catch (err) {
-    console.warn("[AI Inspector Popup] Failed to query tools:", err);
+    console.warn("[WebMCP Debugger Popup] Failed to query tools:", err);
   }
 }
 

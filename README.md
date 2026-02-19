@@ -1,4 +1,4 @@
-# AI Inspector Extension
+# WebMCP Debugger Chrome Extension
 
 Chrome DevTools extension for introspecting `window.ai` (Prompt API / Gemini Nano) and `navigator.modelContext` (WebMCP) on any web page.
 

@@ -10,7 +10,7 @@ export {};
 /* ── Shared helpers ──────────────────────────────────────────── */
 
 function emit(type: string, data: Record<string, unknown>) {
-  window.postMessage({ source: "ai-inspector", type, data }, "*");
+  window.postMessage({ source: "webmcp-debugger", type, data }, "*");
 }
 
 /** Wrap a tool's execute callback to emit TOOL_CALL / TOOL_RESULT_AI events. */

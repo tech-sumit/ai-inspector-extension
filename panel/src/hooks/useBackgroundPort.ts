@@ -23,12 +23,12 @@ export function useBackgroundPort(): chrome.runtime.Port | null {
     const attempt = ++connectAttempt.current;
 
     try {
-      const p = chrome.runtime.connect({ name: "ai-inspector-panel" });
+      const p = chrome.runtime.connect({ name: "webmcp-debugger-panel" });
 
       p.onDisconnect.addListener(() => {
         const err = chrome.runtime.lastError;
         const msg = err?.message ?? "(no error)";
-        console.warn("[AI Inspector] Port disconnected:", msg);
+        console.warn("[WebMCP Debugger] Port disconnected:", msg);
         portRef.current = null;
         setPort(null);
         if (msg.includes("Extension context invalidated")) {
@@ -37,13 +37,13 @@ export function useBackgroundPort(): chrome.runtime.Port | null {
         }
         if (!disposed.current) {
           const delay = Math.min(1000 * Math.pow(2, Math.min(attempt - 1, 4)), 16000);
-          console.info("[AI Inspector] Reconnecting in", delay, "ms (attempt", attempt, ")");
+          console.info("[WebMCP Debugger] Reconnecting in", delay, "ms (attempt", attempt, ")");
           retryTimer.current = setTimeout(connect, delay);
         }
       });
 
       if (chrome.runtime.lastError) {
-        console.error("[AI Inspector] Connect error:", chrome.runtime.lastError.message);
+        console.error("[WebMCP Debugger] Connect error:", chrome.runtime.lastError.message);
         return;
       }
 
@@ -53,11 +53,11 @@ export function useBackgroundPort(): chrome.runtime.Port | null {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("Extension context invalidated")) {
-        console.warn("[AI Inspector] Extension context invalidated — stopping reconnect.");
+        console.warn("[WebMCP Debugger] Extension context invalidated — stopping reconnect.");
         disposed.current = true;
         return;
       }
-      console.error("[AI Inspector] Connect threw:", err);
+      console.error("[WebMCP Debugger] Connect threw:", err);
       if (!disposed.current) {
         retryTimer.current = setTimeout(connect, 2000);
       }

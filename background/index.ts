@@ -19,7 +19,7 @@ const TOOL_EVENT_TYPES = new Set([
 
 // Receive events from content script (bridge.ts)
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.source !== "ai-inspector") return;
+  if (msg.source !== "webmcp-debugger") return;
   const tabId = sender.tab?.id;
   if (!tabId) return;
 
@@ -37,7 +37,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 // Panel connects via port
 chrome.runtime.onConnect.addListener((port) => {
-  if (port.name !== "ai-inspector-panel") return;
+  if (port.name !== "webmcp-debugger-panel") return;
 
   port.onMessage.addListener((msg) => {
     const tabId = msg.tabId as number | undefined;
@@ -54,7 +54,7 @@ chrome.runtime.onConnect.addListener((port) => {
               tools: eventStore.getTools(tabId),
             });
           }).catch((err: unknown) => {
-            console.warn("[AI Inspector BG] GET_STATE failed:", err);
+            console.warn("[WebMCP Debugger BG] GET_STATE failed:", err);
           });
         }
         break;
@@ -66,7 +66,7 @@ chrome.runtime.onConnect.addListener((port) => {
             name: msg.name,
             inputArgs: msg.inputArguments,
           }).catch((err: unknown) => {
-            console.warn("[AI Inspector BG] EXECUTE_TOOL failed for tab", tabId, ":", err);
+            console.warn("[WebMCP Debugger BG] EXECUTE_TOOL failed for tab", tabId, ":", err);
           });
         }
         break;
@@ -102,7 +102,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
         files: ["content/ai-interceptor.js"],
       })
       .catch((err: unknown) => {
-        console.warn("[AI Inspector BG] Failed to inject interceptor on tab", tabId, ":", err);
+        console.warn("[WebMCP Debugger BG] Failed to inject interceptor on tab", tabId, ":", err);
       });
   }
 });

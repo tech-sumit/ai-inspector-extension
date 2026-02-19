@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Inspector — Test Page</title>
+  <title>WebMCP Debugger — Test Page</title>
   <style>
     :root {
       --bg: #0f1117;
@@ -283,7 +283,7 @@
 <body>
 
 <header>
-  <h1>AI Inspector — Test Playground</h1>
+  <h1>WebMCP Debugger — Test Playground</h1>
   <span class="badge">window.ai + WebMCP</span>
 </header>
 
@@ -1081,10 +1081,10 @@ async function scenarioEverything() {
   log('ai', '══ All scenarios complete ══');
 }
 
-// ── Listen for ai-inspector events (for debugging) ───────────
+// ── Listen for webmcp-debugger events (for debugging) ───────────
 window.addEventListener('message', (e) => {
-  if (e.data?.source === 'ai-inspector') {
-    console.log('[AI Inspector Event]', e.data.type, e.data.data);
+  if (e.data?.source === 'webmcp-debugger') {
+    console.log('[WebMCP Debugger Event]', e.data.type, e.data.data);
   }
 });
 

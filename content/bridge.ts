@@ -11,19 +11,19 @@
 function forward(msg: Record<string, unknown>) {
   try {
     chrome.runtime?.sendMessage(msg).catch((err: unknown) => {
-      console.warn("[AI Inspector Bridge] sendMessage failed:", err);
+      console.warn("[WebMCP Debugger Bridge] sendMessage failed:", err);
     });
   } catch (err) {
-    console.warn("[AI Inspector Bridge] Extension context invalidated:", err);
+    console.warn("[WebMCP Debugger Bridge] Extension context invalidated:", err);
   }
 }
 
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
-  if (event.data?.source !== "ai-inspector") return;
+  if (event.data?.source !== "webmcp-debugger") return;
 
   forward({
-    source: "ai-inspector",
+    source: "webmcp-debugger",
     type: event.data.type,
     data: event.data.data,
   });
@@ -32,7 +32,7 @@ window.addEventListener("message", (event) => {
 window.addEventListener("toolactivated", ((event: CustomEvent & { toolName?: string }) => {
   const toolName = event.toolName ?? event.detail?.toolName ?? "unknown";
   forward({
-    source: "ai-inspector",
+    source: "webmcp-debugger",
     type: "TOOL_ACTIVATED",
     data: { toolName, ts: Date.now() },
   });
@@ -41,7 +41,7 @@ window.addEventListener("toolactivated", ((event: CustomEvent & { toolName?: str
 window.addEventListener("toolcancel", ((event: CustomEvent & { toolName?: string }) => {
   const toolName = event.toolName ?? event.detail?.toolName ?? "unknown";
   forward({
-    source: "ai-inspector",
+    source: "webmcp-debugger",
     type: "TOOL_CANCEL",
     data: { toolName, ts: Date.now() },
   });

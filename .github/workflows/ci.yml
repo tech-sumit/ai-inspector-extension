@@ -23,11 +23,11 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm build
       - name: Package extension
-        run: cd dist && zip -r ../ai-inspector-extension.zip .
+        run: cd dist && zip -r ../webmcp-debugger-chrome-extension.zip .
       - uses: actions/upload-artifact@v4
         with:
           name: extension-zip
-          path: ai-inspector-extension.zip
+          path: webmcp-debugger-chrome-extension.zip
 
   release:
     needs: build
@@ -42,4 +42,4 @@ jobs:
           name: extension-zip
       - uses: softprops/action-gh-release@v2
         with:
-          files: ai-inspector-extension.zip
+          files: webmcp-debugger-chrome-extension.zip
